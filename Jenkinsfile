@@ -27,51 +27,39 @@ pipeline {
     }
 
     stages {
-        stage('Clone Repo') {
-            steps {
-                git url: 'git@github.com:ribeirohenrique/infra-as-code.git', branch: 'main'
-            }
-        }
+    stage('Checkout') {
+      steps {
+        git branch: 'main', url: 'git@github.com:ribeirohenrique/infra-as-code.git'
+      }
+    }
 
-        stage('Init Terraform') {
-            steps {
-                dir('topics') {
-                    sh 'terraform init'
-                }
-            }
-        }
+    stage('Terraform Init') {
+      steps {
+        sh 'terraform init'
+      }
+    }
 
-        stage('Create tfvars') {
-            steps {
-                dir('topics') {
-                    writeFile file: 'jenkins.auto.tfvars', text: """
-topic_name           = "${params.TOPIC_NAME}"
-retention_ms         = "${params.RETENTION_MS}"
-cleanup_policy       = "${params.CLEANUP_POLICY}"
-max_message_bytes    = "${params.MAX_MESSAGE_BYTES}"
-"""
+    stage('Generate tfvars') {
+      steps {
+        writeFile file: 'terraform.tfvars', text: """
+          service_account_cluster_key    = "${env.CLUSTER_KEY}"
+          service_account_cluster_secret = "${env.CLUSTER_SECRET}"
+          tag_name                       = "${env.TAG_NAME}"
+        """
+      }
+    }
 
-                    echo "Arquivo jenkins.auto.tfvars criado para ${params.TOPIC_NAME}"
-                }
-            }
-        }
+    stage('Terraform Plan') {
+      steps {
+        sh 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
+      }
+    }
 
-        stage('Plan') {
-            steps {
-                dir('topics') {
-                    sh 'terraform plan -out=tfplan'
-                }
-            }
-        }
-
-        stage('Apply') {
-            steps {
-                input message: "Deseja aplicar a criação do tópico '${params.TOPIC_NAME}' com retenção ${params.RETENTION_MS}ms?"
-                dir('topics') {
-                    sh 'terraform apply tfplan'
-                }
-            }
-        }
+    stage('Terraform Apply') {
+      steps {
+        input message: 'Deseja aplicar as mudanças?'
+        sh 'terraform apply tfplan'
+      }
     }
 
     post {
