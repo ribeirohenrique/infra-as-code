@@ -20,10 +20,10 @@ pipeline {
         TF_VAR_cluster_secret                = credentials('CONFLUENT_SHARED_DES_CLUSTER')
         TF_VAR_schema_registry_api_key       = credentials('CONFLUENT_SHARED_DES_SCHEMA')
         TF_VAR_schema_registry_api_secret    = credentials('CONFLUENT_SHARED_DES_SCHEMA')
-        TF_VAR_environment_id                = ${params.ENVIRONMENT_ID}
-        TF_VAR_cluster_id                    = ${params.CLUSTER_ID}
-        TF_VAR_schema_registry_id            = ${params.SCHEMA_REGISTRY_ID}
-        TF_VAR_schema_registry_rest_endpoint = ${params.SCHEMA_REST_ENDPOINT}
+        TF_VAR_environment_id                = "${params.ENVIRONMENT_ID}"
+        TF_VAR_cluster_id                    = "${params.CLUSTER_ID}"
+        TF_VAR_schema_registry_id            = "${params.SCHEMA_REGISTRY_ID}"
+        TF_VAR_schema_registry_rest_endpoint = "${params.SCHEMA_REST_ENDPOINT}"
     }
 
     stages {
