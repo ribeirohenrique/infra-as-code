@@ -24,55 +24,54 @@ pipeline {
 
     stage('Terraform Init') {
       steps {
-        sh 'cd topics'
-        sh 'terraform init'
+        sh 'cd topics && terraform init'
       }
     }
 
-    stage('Generate tfvars') {
-        steps {
-        sh 'cd topics'
-            withCredentials([
-                    usernamePassword(credentialsId: 'CONFLUENT_CLOUD', usernameVariable: 'CLOUD_KEY', passwordVariable: 'CLOUD_SECRET'),
-                    usernamePassword(credentialsId: 'SHARED_DES_SCHEMA', usernameVariable: 'SCHEMA_KEY', passwordVariable: 'SCHEMA_SECRET'),
-                    usernamePassword(credentialsId: 'SHARED_DES_CLUSTER', usernameVariable: 'CLUSTER_KEY', passwordVariable: 'CLUSTER_SECRET'),
-            ]) {
-                writeFile file: 'terraform.tfvars', text: """
-          cloud_key    = "${CLOUD_KEY}"
-          cloud_secret = "${CLOUD_SECRET}"
-          cluster_key = "${CLUSTER_KEY}"
-          cluster_secret = "${CLUSTER_SECRET}"
-          schema_registry_key = "${SCHEMA_KEY}"
-          schema_registry_secret = "${SCHEMA_SECRET}"
-          environment_id = "${params.ENVIRONMENT_ID}"
-          schema_registry_id = "${params.SCHEMA_REGISTRY_ID}"
-          cluster_id = "${params.CLUSTER_ID}"
-          topic_name = "${params.TOPIC_NAME}"
-          schema_registry_rest_endpoint = "${params.SCHEMA_REST_ENDPOINT}"
-          cleanup_policy = "${params.CLEANUP_POLICY}"
-          delete_retention_ms = "${params.DELETE_RETENTION_MS}"
-          max_message_bytes = "${params.MAX_MESSAGE_BYTES}"
-          retention_bytes = "${params.RETENTION_BYTES}"
-          retention_ms = "${params.RETENTION_MS}"
-          segment_bytes = "${params.SEGMENT_BYTES}"
-          segment_ms = "${params.SEGMENT_MS}"
-        """
-            }
-        }
+stage('Generate tfvars') {
+  steps {
+    withCredentials([
+      usernamePassword(credentialsId: 'CONFLUENT_CLOUD', usernameVariable: 'CLOUD_KEY', passwordVariable: 'CLOUD_SECRET'),
+      usernamePassword(credentialsId: 'SHARED_DES_SCHEMA', usernameVariable: 'SCHEMA_KEY', passwordVariable: 'SCHEMA_SECRET'),
+      usernamePassword(credentialsId: 'SHARED_DES_CLUSTER', usernameVariable: 'CLUSTER_KEY', passwordVariable: 'CLUSTER_SECRET'),
+    ]) {
+      script {
+        def tfvarsContent = """
+cloud_key = "${CLOUD_KEY}"
+cloud_secret = "${CLOUD_SECRET}"
+cluster_key = "${CLUSTER_KEY}"
+cluster_secret = "${CLUSTER_SECRET}"
+schema_registry_key = "${SCHEMA_KEY}"
+schema_registry_secret = "${SCHEMA_SECRET}"
+environment_id = "${params.ENVIRONMENT_ID}"
+schema_registry_id = "${params.SCHEMA_REGISTRY_ID}"
+cluster_id = "${params.CLUSTER_ID}"
+topic_name = "${params.TOPIC_NAME}"
+schema_registry_rest_endpoint = "${params.SCHEMA_REST_ENDPOINT}"
+cleanup_policy = "${params.CLEANUP_POLICY}"
+delete_retention_ms = "${params.DELETE_RETENTION_MS}"
+max_message_bytes = "${params.MAX_MESSAGE_BYTES}"
+retention_bytes = "${params.RETENTION_BYTES}"
+retention_ms = "${params.RETENTION_MS}"
+segment_bytes = "${params.SEGMENT_BYTES}"
+segment_ms = "${params.SEGMENT_MS}"
+"""
+        writeFile file: 'topics/terraform.tfvars', text: tfvarsContent
+      }
     }
+  }
+}
 
     stage('Terraform Plan') {
       steps {
-        sh 'cd topics'
-        sh 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
+        sh 'cd topics && terraform plan -var-file="terraform.tfvars" -out=tfplan'
       }
     }
 
     stage('Terraform Apply') {
       steps {
         input message: 'Deseja aplicar as mudanças?'
-        sh 'cd topics'
-        sh 'terraform apply tfplan'
+        sh 'cd topics && terraform apply tfplan'
       }
     }
     }
