@@ -35,7 +35,7 @@ pipeline {
 
     stage('Terraform Init') {
       steps {
-        sh 'terraform init'
+        sh 'cd topics && terraform init'
       }
     }
 
