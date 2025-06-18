@@ -22,20 +22,16 @@ pipeline {
       }
     }
 
-    stage('Navigate to folder') {
-      steps {
-        sh 'cd topics'
-      }
-    }
-
     stage('Terraform Init') {
       steps {
+        sh 'cd topics'
         sh 'terraform init'
       }
     }
 
     stage('Generate tfvars') {
         steps {
+        sh 'cd topics'
             withCredentials([
                     usernamePassword(credentialsId: 'CONFLUENT_CLOUD', usernameVariable: 'CLOUD_KEY', passwordVariable: 'CLOUD_SECRET'),
                     usernamePassword(credentialsId: 'SHARED_DES_SCHEMA', usernameVariable: 'SCHEMA_KEY', passwordVariable: 'SCHEMA_SECRET'),
@@ -67,6 +63,7 @@ pipeline {
 
     stage('Terraform Plan') {
       steps {
+        sh 'cd topics'
         sh 'terraform plan -var-file="terraform.tfvars" -out=tfplan'
       }
     }
@@ -74,6 +71,7 @@ pipeline {
     stage('Terraform Apply') {
       steps {
         input message: 'Deseja aplicar as mudanças?'
+        sh 'cd topics'
         sh 'terraform apply tfplan'
       }
     }
