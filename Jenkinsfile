@@ -15,17 +15,6 @@ pipeline {
     string(name: 'SCHEMA_REGISTRY_ID', defaultValue: 'lsrc-yjjk2j', description: 'Id do schema registry')
     string(name: 'SCHEMA_REST_ENDPOINT', defaultValue: 'https://psrc-q8w9z6.us-central1.gcp.confluent.cloud', description: 'REST Endpoint do schema registry')
 }
-
-
-    environment {
-        TF_VAR_confluent_cloud_api_key       = credentials('CONFLUENT_CLOUD_KEY')
-        TF_VAR_confluent_cloud_api_secret    = credentials('CONFLUENT_CLOUD_KEY')  // se key:secret estiver juntos
-        TF_VAR_cluster_key                   = credentials('CONFLUENT_SHARED_DES_CLUSTER')  // pode separar se quiser
-        TF_VAR_cluster_secret                = credentials('CONFLUENT_SHARED_DES_CLUSTER')
-        TF_VAR_schema_registry_api_key       = credentials('CONFLUENT_SHARED_DES_SCHEMA')
-        TF_VAR_schema_registry_api_secret    = credentials('CONFLUENT_SHARED_DES_SCHEMA')
-    }
-
     stages {
     stage('Checkout') {
       steps {
@@ -33,21 +22,32 @@ pipeline {
       }
     }
 
+    stage('Navigate to folder') {
+      steps {
+        sh 'cd topics'
+      }
+    }
+
     stage('Terraform Init') {
       steps {
-        sh 'cd topics && terraform init'
+        sh 'terraform init'
       }
     }
 
     stage('Generate tfvars') {
-      steps {
-        writeFile file: 'terraform.tfvars', text: """
-          cloud_key    = "${env.TF_VAR_confluent_cloud_api_key}"
-          cloud_secret = "${env.TF_VAR_confluent_cloud_api_secret}"
-          cluster_key = "${env.TF_VAR_cluster_key}"
-          cluster_secret = "${env.TF_VAR_cluster_secret}"
-          schema_registry_key = "${env.TF_VAR_schema_registry_api_key}"
-          schema_registry_secret = "${env.TF_VAR_schema_registry_api_secret}"
+        steps {
+            withCredentials([
+                    usernamePassword(credentialsId: 'CONFLUENT_CLOUD', usernameVariable: 'CLOUD_KEY', passwordVariable: 'CLOUD_SECRET'),
+                    usernamePassword(credentialsId: 'SHARED_DES_SCHEMA', usernameVariable: 'SCHEMA_KEY', passwordVariable: 'SCHEMA_SECRET'),
+                    usernamePassword(credentialsId: 'SHARED_DES_CLUSTER', usernameVariable: 'CLUSTER_KEY', passwordVariable: 'CLUSTER_SECRET'),
+            ]) {
+                writeFile file: 'terraform.tfvars', text: """
+          cloud_key    = "${CLOUD_KEY}"
+          cloud_secret = "${CLOUD_SECRET}"
+          cluster_key = "${CLUSTER_KEY}"
+          cluster_secret = "${CLUSTER_SECRET}"
+          schema_registry_key = "${SCHEMA_KEY}"
+          schema_registry_secret = "${SCHEMA_SECRET}"
           environment_id = "${params.ENVIRONMENT_ID}"
           schema_registry_id = "${params.SCHEMA_REGISTRY_ID}"
           cluster_id = "${params.CLUSTER_ID}"
@@ -61,7 +61,8 @@ pipeline {
           segment_bytes = "${params.SEGMENT_BYTES}"
           segment_ms = "${params.SEGMENT_MS}"
         """
-      }
+            }
+        }
     }
 
     stage('Terraform Plan') {
