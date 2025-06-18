@@ -10,8 +10,8 @@ pipeline {
     string(name: 'SEGMENT_BYTES', defaultValue: '52428800', description: 'Tempo de retenção em milissegundos (padrão: 52Mb)')
     string(name: 'CLEANUP_POLICY', defaultValue: 'delete', description: 'Política de limpeza (delete, compact)')
     string(name: 'MAX_MESSAGE_BYTES', defaultValue: '5000000', description: 'Tamanho máximo de mensagem em bytes')
-    string(name: 'ENVIRONMENT_ID', defaultValue: 'lkc-6xxy82', description: 'Id do cluster')
-    string(name: 'CLUSTER_ID', defaultValue: 'env-qzn062', description: 'Id do environment')
+    string(name: 'CLUSTER_ID', defaultValue: 'lkc-6xxy82', description: 'Id do cluster')
+    string(name: 'ENVIRONMENT_ID', defaultValue: 'env-qzn062', description: 'Id do environment')
     string(name: 'SCHEMA_REGISTRY_ID', defaultValue: 'lsrc-yjjk2j', description: 'Id do schema registry')
     string(name: 'SCHEMA_REST_ENDPOINT', defaultValue: 'https://psrc-q8w9z6.us-central1.gcp.confluent.cloud', description: 'REST Endpoint do schema registry')
 }
