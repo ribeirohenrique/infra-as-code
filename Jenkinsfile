@@ -1,10 +1,5 @@
 pipeline {
     agent any
-
-    environment {
-        TF_CLI_ARGS = "-no-color"
-    }
-
     parameters {
         string(name: 'TOPIC_NAME', defaultValue: 'topico-jenkins', description: 'Nome do tópico Kafka')
         string(name: 'DELETE_RETENTION_MS', defaultValue: '604800000', description: 'Tempo para deleção da retenção em milissegundos (padrão: 7 dias)')
@@ -19,7 +14,20 @@ pipeline {
         string(name: 'SCHEMA_REGISTRY_ID', defaultValue: 'lsrc-yjjk2j', description: 'Id do schema registry')
         string(name: 'SCHEMA_REST_ENDPOINT', defaultValue: 'https://psrc-q8w9z6.us-central1.gcp.confluent.cloud', description: 'REST Endpoint do schema registry')
     }
+
+    environment {
+        TF_CLI_ARGS = "-no-color"
+        WORKSPACE_DIR = "topics/${TOPIC_NAME}-${BUILD_ID}"
+    }
     stages {
+
+        stage('Prepare Workspace') {
+            steps {
+                sh 'mkdir -p $WORKSPACE_DIR'
+                sh 'cp -r topics/template/* $WORKSPACE_DIR/'
+            }
+        }
+
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'git@github.com:ribeirohenrique/infra-as-code.git'
@@ -28,17 +36,17 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                sh 'cd topics && terraform init'
+                dir("$WORKSPACE_DIR") {
+                    sh 'terraform init'
+                }
             }
         }
 
         stage('Generate tfvars') {
             steps {
-                withCredentials([
-                        usernamePassword(credentialsId: 'CONFLUENT_CLOUD', usernameVariable: 'CLOUD_KEY', passwordVariable: 'CLOUD_SECRET'),
-                        usernamePassword(credentialsId: 'SHARED_DES_SCHEMA', usernameVariable: 'SCHEMA_KEY', passwordVariable: 'SCHEMA_SECRET'),
-                        usernamePassword(credentialsId: 'SHARED_DES_CLUSTER', usernameVariable: 'CLUSTER_KEY', passwordVariable: 'CLUSTER_SECRET'),
-                ]) {
+                withCredentials([usernamePassword(credentialsId: 'CONFLUENT_CLOUD', usernameVariable: 'CLOUD_KEY', passwordVariable: 'CLOUD_SECRET'),
+                                 usernamePassword(credentialsId: 'SHARED_DES_SCHEMA', usernameVariable: 'SCHEMA_KEY', passwordVariable: 'SCHEMA_SECRET'),
+                                 usernamePassword(credentialsId: 'SHARED_DES_CLUSTER', usernameVariable: 'CLUSTER_KEY', passwordVariable: 'CLUSTER_SECRET'),]) {
                     script {
                         def tfvarsContent = """
 cloud_key = "${CLOUD_KEY}"
@@ -60,7 +68,7 @@ retention_ms = "${params.RETENTION_MS}"
 segment_bytes = "${params.SEGMENT_BYTES}"
 segment_ms = "${params.SEGMENT_MS}"
 """
-                        writeFile file: 'topics/terraform.tfvars', text: tfvarsContent
+                        writeFile file: "${env.WORKSPACE_DIR}/terraform.tfvars", text: tfvarsContent
                     }
                 }
             }
@@ -68,21 +76,25 @@ segment_ms = "${params.SEGMENT_MS}"
 
         stage('Terraform Plan') {
             steps {
-                sh 'cd topics && terraform plan -var-file="terraform.tfvars" -out=tfplan'
+                dir("$WORKSPACE_DIR") {
+                    sh 'terraform plan -var-file=terraform.tfvars -out=tfplan'
+                }
             }
         }
 
         stage('Terraform Apply') {
             steps {
                 input message: 'Deseja aplicar as mudanças?'
-                sh 'cd topics && terraform apply tfplan'
+                dir("$WORKSPACE_DIR") {
+                    sh 'terraform apply tfplan'
+                }
             }
         }
     }
 
     post {
         always {
-            archiveArtifacts artifacts: 'topics/*.tfvars', fingerprint: true
+            archiveArtifacts artifacts: "$WORKSPACE_DIR/*", fingerprint: true
         }
     }
 }
